@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pranav.exe — Crafting Table</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --grass: #63A63E;
+    --grass-dark: #4A7C2E;
+    --dirt: #7A4B29;
+    --dirt-dark: #5C3A20;
+    --stone: #8A8A8A;
+    --stone-dark: #404040;
+    --sky-top: #3A6EA5;
+    --sky-bottom: #7EC8E3;
+    --night: #18181C;
+    --gui-bg: #C6C6C6;
+    --gui-light: #FFFFFF;
+    --gui-shadow: #555555;
+    --gui-dark: #373737;
+    --gui-slot: #8B8B8B;
+    --gold: #FFD542;
+    --diamond: #5BD3E0;
+    --redstone: #FF2200;
+    --xp-green: #80FF20;
+    --text: #E8E8E8;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--night);
+    color: var(--text);
+    font-family: 'VT323', monospace;
+    font-size: 22px;
+    image-rendering: pixelated;
+    overflow-x: hidden;
+    cursor: crosshair;
+  }
+  .pixel { font-family: 'Press Start 2P', monospace; }
+  ::selection { background: var(--gold); color: #000; }
+  a, .hotbar-slot, .inv-slot, .mc-btn { cursor: pointer; }
+
+  /* ---------- MINECRAFT GUI PANELS ---------- */
+  .mc-panel {
+    background: var(--gui-bg);
+    border: 4px solid;
+    border-color: var(--gui-light) var(--gui-shadow) var(--gui-shadow) var(--gui-light);
+    box-shadow: inset -2px -2px 0px var(--gui-dark), inset 2px 2px 0px #E0E0E0, 0 8px 16px rgba(0,0,0,0.5);
+    color: #2B2B2B;
+    position: relative;
+  }
+  .mc-panel-dark {
+    background: #202020;
+    border: 4px solid;
+    border-color: #404040 #101010 #101010 #404040;
+    box-shadow: inset -2px -2px 0px #080808, inset 2px 2px 0px #505050;
+    color: var(--text);
+  }
+
+  /* ---------- ENCHANTMENT GLINT ---------- */
+  @keyframes enchant-shimmer {
+    0% { background-position: -200% -200%; }
+    100% { background-position: 200% 200%; }
+  }
+  .enchanted { position: relative; overflow: hidden; }
+  .enchanted::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, transparent 20%, rgba(180,100,255,0.25) 35%, rgba(91,211,224,0.25) 50%, transparent 65%);
+    background-size: 200% 200%;
+    animation: enchant-shimmer 4s infinite linear;
+    pointer-events: none;
+  }
+
+  /* ---------- TOP HOTBAR NAV ---------- */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+    display: flex; justify-content: center; padding: 12px 0;
+    background: linear-gradient(to bottom, rgba(16,16,20,0.95), rgba(16,16,20,0.7));
+    backdrop-filter: blur(4px);
+  }
+  .hotbar {
+    display: flex; gap: 4px; padding: 4px;
+    background: #303030; border: 3px solid;
+    border-color: #505050 #151515 #151515 #505050;
+  }
+  .hotbar-slot {
+    width: 64px; height: 64px;
+    display: flex; align-items: center; justify-content: center; flex-direction: column;
+    cursor: pointer; background: var(--gui-slot);
+    border: 3px solid; border-color: #373737 #FFFFFF #FFFFFF #373737;
+    position: relative; transition: transform 0.08s, background 0.08s;
+  }
+  .hotbar-slot:hover, .hotbar-slot.active {
+    background: #9E9E9E; border-color: #FFFFFF;
+    box-shadow: 0 0 0 2px #FFFFFF; transform: translateY(-2px); z-index: 2;
+  }
+  .hotbar-slot .key-num {
+    position: absolute; top: 2px; left: 4px;
+    font-family: 'Press Start 2P'; font-size: 8px; color: #404040;
+  }
+  .hotbar-slot .icon { font-size: 24px; line-height: 1; }
+  .hotbar-slot .label {
+    font-family: 'Press Start 2P'; font-size: 7px; color: #111;
+    margin-top: 4px; text-shadow: 1px 1px 0 rgba(255,255,255,0.4);
+  }
+
+  /* ---------- HERO ---------- */
+  header {
+    min-height: 100vh; position: relative;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center;
+    background: linear-gradient(to bottom, var(--sky-top) 0%, var(--sky-bottom) 65%, #A2E0F8 75%, var(--grass) 75%, var(--grass-dark) 100%);
+    padding: 100px 20px 40px; overflow: hidden;
+  }
+  .cloud {
+    position: absolute; background: rgba(255,255,255,0.9);
+    width: 40px; height: 16px;
+    box-shadow: 40px 0 0 rgba(255,255,255,0.9), 80px 0 0 rgba(255,255,255,0.9), 20px -16px 0 rgba(255,255,255,0.9), 60px -16px 0 rgba(255,255,255,0.9);
+    animation: drift 40s linear infinite;
+  }
+  @keyframes drift { from { transform: translateX(-200px); } to { transform: translateX(110vw); } }
+  .sun {
+    position: absolute; top: 80px; right: 10%;
+    width: 72px; height: 72px; background: var(--gold);
+    border: 4px solid #FFF7D6;
+    box-shadow: 0 0 0 12px rgba(255,213,66,0.25);
+  }
+  .title-block {
+    display: inline-block; padding: 28px 40px;
+    background: rgba(16,16,20,0.75); border: 4px solid;
+    border-color: #606060 #101010 #101010 #606060;
+    box-shadow: 0 12px 24px rgba(0,0,0,0.6);
+  }
+  h1.pixel {
+    font-size: clamp(26px, 5vw, 48px); color: #FFFFFF;
+    text-shadow: 4px 4px 0 #3F3F3F, 6px 6px 0 #000000; letter-spacing: 2px;
+  }
+  .subtitle {
+    margin-top: 14px; font-size: 24px; color: #B5F89A;
+    text-shadow: 2px 2px 0 #101010;
+  }
+
+  /* ---------- MINECRAFT HEARTS (pixel-art) ---------- */
+  .hud-container {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 10px; margin-top: 24px;
+  }
+  .hp-bar-row { display: flex; gap: 2px; }
+  .heart {
+    width: 18px; height: 18px; position: relative;
+    image-rendering: pixelated;
+    filter: drop-shadow(2px 2px 0 #000);
+    clip-path: polygon(
+      20% 0%, 40% 0%, 40% 20%, 60% 20%, 60% 0%, 80% 0%, 80% 20%,
+      100% 20%, 100% 60%, 80% 60%, 80% 80%, 60% 80%, 60% 100%,
+      40% 100%, 40% 80%, 20% 80%, 20% 60%, 0% 60%, 0% 20%, 20% 20%
+    );
+    background: #FF0000;
+    transition: background 0.2s;
+  }
+  .heart.empty { background: #444; }
+  .heart.full::after {
+    content: ''; position: absolute; top: 3px; left: 3px;
+    width: 3px; height: 3px; background: #FF8888;
+  }
+
+  /* ---------- AGE BAR (birthday: 15/09/2007) ---------- */
+  .age-bar-container {
+    display: flex; align-items: center; gap: 12px; width: 300px;
+  }
+  .age-level {
+    font-family: 'Press Start 2P'; font-size: 14px; color: var(--xp-green);
+    text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+  }
+  .age-track {
+    flex: 1; height: 12px; background: #202020;
+    border: 2px solid #000; padding: 1px; position: relative;
+  }
+  .age-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(to bottom, #A6FF4D, #63C71E);
+    box-shadow: 0 0 6px var(--xp-green);
+    transition: width 1.5s ease;
+  }
+  .age-label {
+    font-family: 'Press Start 2P'; font-size: 7px; color: #888;
+    white-space: nowrap;
+  }
+
+  .scroll-hint {
+    position: absolute; bottom: 30px;
+    font-family: 'Press Start 2P'; font-size: 11px; color: #FFF;
+    text-shadow: 2px 2px 0 #000; animation: bob 1.4s infinite;
+  }
+  @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(8px); } }
+
+  /* ---------- GROUND STRIP (grass + dirt) ---------- */
+  .ground-strip {
+    height: 48px; width: 100%;
+    background:
+      linear-gradient(to bottom,
+        var(--grass) 0%, var(--grass) 8px,
+        var(--grass-dark) 8px, var(--grass-dark) 16px,
+        var(--dirt) 16px, var(--dirt) 100%);
+    border-top: 4px solid var(--grass-dark);
+    border-bottom: 6px solid var(--dirt-dark);
+    position: relative;
+    image-rendering: pixelated;
+  }
+  /* Grass blade texture on top */
+  .ground-strip::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 16px;
+    background:
+      radial-gradient(circle at 20% 50%, var(--grass-dark) 1px, transparent 2px),
+      radial-gradient(circle at 50% 30%, var(--grass) 1px, transparent 2px),
+      radial-gradient(circle at 80% 60%, var(--grass-dark) 1px, transparent 2px),
+      repeating-linear-gradient(90deg, transparent 0 4px, rgba(0,0,0,0.08) 4px 5px);
+    background-size: 12px 12px, 10px 10px, 14px 14px, 5px 5px;
+  }
+  /* Dirt texture below */
+  .ground-strip::after {
+    content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 32px;
+    background:
+      radial-gradient(circle at 25% 30%, var(--dirt-dark) 1px, transparent 2px),
+      radial-gradient(circle at 70% 60%, #6B4220 1px, transparent 2px),
+      repeating-linear-gradient(90deg, transparent 0 28px, rgba(0,0,0,0.1) 28px 30px);
+    background-size: 14px 14px, 18px 18px, 30px 30px;
+  }
+
+  /* ---------- SECTIONS (scroll-margin-top fixes navbar overlap) ---------- */
+  section {
+    padding: 80px 24px; max-width: 1040px; margin: 0 auto;
+    position: relative;
+    scroll-margin-top: 100px;
+  }
+  .eyebrow {
+    font-family: 'Press Start 2P'; font-size: 12px; color: var(--gold);
+    text-shadow: 2px 2px 0 #000; margin-bottom: 12px; display: inline-block;
+  }
+  h2.pixel {
+    font-size: clamp(20px, 3.5vw, 32px); color: #FFFFFF;
+    text-shadow: 3px 3px 0 #000; margin-bottom: 32px;
+  }
+  p.body-text { line-height: 1.7; color: #D8D8D8; font-size: 24px; }
+
+  /* ---------- ABOUT ---------- */
+  .about-wrap { display: flex; gap: 36px; align-items: flex-start; flex-wrap: wrap; }
+  .about-text { flex: 1; min-width: 300px; }
+  .stat-card { padding: 20px; min-width: 320px; }
+  .stat-row {
+    display: flex; justify-content: space-between; font-size: 20px;
+    padding: 8px 0; border-bottom: 2px dashed #9E9E9E;
+  }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-row b { color: #0E0E0E; font-family: 'Press Start 2P'; font-size: 10px; align-self: center; }
+
+  /* ---------- INVENTORY ---------- */
+  .inventory {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px; padding: 20px;
+  }
+  .inv-slot {
+    background: var(--gui-slot); border: 3px solid;
+    border-color: #373737 #FFFFFF #FFFFFF #373737;
+    padding: 14px 10px; text-align: center;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 8px; position: relative; cursor: default; min-height: 120px;
+    transition: transform 0.1s;
+  }
+  .inv-slot:hover {
+    background: #9E9E9E; border-color: #FFFFFF #373737 #373737 #FFFFFF;
+    transform: scale(1.05);
+  }
+  .inv-slot .icon { font-size: 32px; filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.3)); }
+  .inv-slot .name { font-size: 18px; color: #151515; line-height: 1.2; font-weight: bold; }
+  .inv-slot .tier {
+    font-family: 'Press Start 2P'; font-size: 8px; padding: 3px 6px;
+    background: #2B2B2B; color: #FFF;
+  }
+  .inv-slot .tier.diamond { color: var(--diamond); }
+  .inv-slot .tier.gold { color: var(--gold); }
+  .inv-slot .tier.iron { color: #D8D8D8; }
+  .inv-slot .tier.redstone { color: #FF6B5B; }
+
+  .tooltip {
+    visibility: hidden; opacity: 0; position: absolute; bottom: 110%; left: 50%;
+    transform: translateX(-50%); background: #11001A; border: 3px solid #2B0040;
+    outline: 3px solid #11001A; padding: 8px 12px; width: 200px; z-index: 100;
+    transition: opacity 0.15s; pointer-events: none;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.8); text-align: left;
+  }
+  .inv-slot:hover .tooltip { visibility: visible; opacity: 1; }
+  .tooltip-title { font-family: 'Press Start 2P'; font-size: 10px; color: #FFF; margin-bottom: 6px; }
+  .tooltip-lore { font-size: 16px; color: #AA00AA; font-style: italic; line-height: 1.3; }
+  .tooltip-enchant { font-size: 16px; color: #55FFFF; margin-top: 4px; }
+
+  /* ---------- PROJECTS ---------- */
+  .craft-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+  .craft-card { padding: 24px; display: flex; flex-direction: column; justify-content: space-between; transition: transform 0.15s; }
+  .craft-card:hover { transform: translateY(-6px); }
+  .craft-card .achieve-tag {
+    font-family: 'Press Start 2P'; font-size: 9px; color: #FFF;
+    background: #3B2D1D; border: 2px solid var(--gold);
+    display: inline-block; padding: 6px 10px; margin-bottom: 14px; align-self: flex-start;
+  }
+  .craft-card h3 { font-family: 'Press Start 2P'; font-size: 16px; margin-bottom: 12px; color: #111; line-height: 1.4; }
+  .craft-card p { font-size: 20px; line-height: 1.5; color: #222; margin-bottom: 18px; }
+  .tag-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag { font-family: 'VT323'; font-size: 18px; background: #4A3320; color: #FCE9C6; padding: 2px 10px; border: 2px solid #2B1D11; }
+
+  /* ---------- TIMELINE ---------- */
+  .achv-list { display: flex; flex-direction: column; gap: 16px; position: relative; }
+  .achv-list::before {
+    content: ''; position: absolute; top: 20px; bottom: 20px; left: 28px;
+    width: 6px; background: var(--redstone); box-shadow: 0 0 10px var(--redstone);
+  }
+  .achv {
+    display: flex; align-items: center; gap: 20px; padding: 16px 20px;
+    background: rgba(24,24,28,0.85); border: 3px solid #3A3A40;
+    position: relative; z-index: 1; transition: border-color 0.3s, transform 0.2s;
+  }
+  .achv:hover { border-color: var(--gold); transform: translateX(8px); }
+  .achv .node {
+    width: 18px; height: 18px; background: var(--redstone);
+    border: 3px solid #FFF; box-shadow: 0 0 10px var(--redstone); flex-shrink: 0;
+  }
+  .achv .txt b { display: block; color: #FFF; font-size: 22px; margin-bottom: 4px; }
+  .achv .txt span { color: #B0B0B0; font-size: 18px; }
+
+  /* ---------- CONTACT ---------- */
+  .sign {
+    background: var(--dirt); border: 6px solid var(--dirt-dark);
+    padding: 36px 24px; text-align: center; max-width: 560px; margin: 0 auto;
+    box-shadow: 0 16px 32px rgba(0,0,0,0.6);
+  }
+  .sign h3 { font-family: 'Press Start 2P'; font-size: 16px; color: #FCE9C6; margin-bottom: 24px; text-shadow: 2px 2px 0 #000; }
+  .contact-links { display: flex; flex-direction: column; gap: 14px; }
+  .mc-btn {
+    font-family: 'Press Start 2P'; font-size: 11px; color: #E0E0E0; text-decoration: none;
+    background: #707070; border: 4px solid; border-color: #A0A0A0 #303030 #303030 #A0A0A0;
+    padding: 16px; display: block; text-shadow: 2px 2px 0 #000;
+    transition: background 0.1s, color 0.1s; cursor: pointer;
+  }
+  .mc-btn:hover { background: #808888; color: var(--gold); border-color: #B0B8B8 #404848 #404848 #B0B8B8; }
+  .mc-btn:active { border-color: #303030 #A0A0A0 #A0A0A0 #303030; transform: translateY(2px); }
+
+  footer { text-align: center; padding: 40px; font-size: 18px; color: #888; background: #101014; border-top: 4px solid #222; }
+
+  /* ---------- ACHIEVEMENT POPUP ---------- */
+  .achv-popup {
+    position: fixed; top: 90px; right: -400px; z-index: 2000;
+    background: #11001A; border: 4px solid; border-color: #5A2070 #200040 #200040 #5A2070;
+    padding: 16px 20px; display: flex; align-items: center; gap: 16px;
+    transition: right 0.5s cubic-bezier(0.5,1.5,0.5,1); max-width: 360px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.8);
+  }
+  .achv-popup.show { right: 20px; }
+  .achv-popup .achv-icon { font-size: 36px; filter: drop-shadow(2px 2px 0 #000); }
+  .achv-popup .achv-txt b { display: block; color: var(--gold); font-family: 'Press Start 2P'; font-size: 9px; margin-bottom: 6px; text-shadow: 1px 1px 0 #000; }
+  .achv-popup .achv-txt span { color: #FFF; font-size: 18px; }
+
+  /* ---------- PARTICLES & ORBS ---------- */
+  .particle { position: fixed; width: 6px; height: 6px; pointer-events: none; z-index: 9999; image-rendering: pixelated; }
+  .xp-orb {
+    position: absolute; width: 10px; height: 10px; border-radius: 50%;
+    background: radial-gradient(circle, #A6FF4D, #63C71E);
+    box-shadow: 0 0 8px var(--xp-green);
+    animation: orbfloat 6s linear infinite; pointer-events: none;
+  }
+  @keyframes orbfloat {
+    0% { transform: translateY(0) scale(1); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { transform: translateY(-200px) scale(0.3); opacity: 0; }
+  }
+
+  /* ---------- SCROLL REVEAL ---------- */
+  .reveal { opacity: 0; transform: translateY(40px); transition: opacity 0.6s ease, transform 0.6s ease; }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  @media (max-width: 640px) {
+    .hotbar-slot { width: 52px; height: 52px; }
+    .hotbar-slot .label { font-size: 6px; }
+    .hotbar-slot .key-num { display: none; }
+    .age-bar-container { width: 240px; }
+    .achv-list::before { left: 19px; }
+    .xp-orb { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ACHIEVEMENT POPUP -->
+<div class="achv-popup" id="achvPopup">
+  <span class="achv-icon">🏆</span>
+  <div class="achv-txt"><b>ACHIEVEMENT GET!</b><span id="achvText">Welcome to Pranav's World</span></div>
+</div>
+
+<!-- TOP HOTBAR NAVIGATION -->
+<nav>
+  <div class="hotbar">
+    <div class="hotbar-slot active" data-target="about"><span class="key-num">1</span><span class="icon">👤</span><span class="label">ABOUT</span></div>
+    <div class="hotbar-slot" data-target="skills"><span class="key-num">2</span><span class="icon">🎒</span><span class="label">SKILLS</span></div>
+    <div class="hotbar-slot" data-target="projects"><span class="key-num">3</span><span class="icon">⛏️</span><span class="label">BUILDS</span></div>
+    <div class="hotbar-slot" data-target="timeline"><span class="key-num">4</span><span class="icon">🏆</span><span class="label">QUESTS</span></div>
+    <div class="hotbar-slot" data-target="contact"><span class="key-num">5</span><span class="icon">✉️</span><span class="label">SPAWN</span></div>
+  </div>
+</nav>
+
+<!-- HERO HEADER -->
+<header>
+  <div class="cloud" style="top:90px; left:5%; animation-duration: 45s;"></div>
+  <div class="cloud" style="top:150px; left:55%; animation-duration: 35s;"></div>
+  <div class="cloud" style="top:70px; left:80%; opacity:0.7; animation-duration: 50s;"></div>
+  <div class="sun"></div>
+
+  <div class="xp-orb" style="bottom:30%; left:18%; animation-delay:0s;"></div>
+  <div class="xp-orb" style="bottom:25%; left:72%; animation-delay:2s;"></div>
+  <div class="xp-orb" style="bottom:35%; left:45%; animation-delay:4s;"></div>
+
+  <div class="title-block">
+    <h1 class="pixel">PRANAV.exe</h1>
+
+    <div class="hud-container">
+      <div class="hp-bar-row" id="heartBar">
+        <div class="heart full"></div><div class="heart full"></div><div class="heart full"></div>
+        <div class="heart full"></div><div class="heart full"></div><div class="heart full"></div>
+        <div class="heart full"></div><div class="heart full"></div><div class="heart full"></div>
+        <div class="heart full"></div>
+      </div>
+
+      <div class="age-bar-container">
+        <span class="age-level" id="ageLevel">18</span>
+        <div class="age-track">
+          <div class="age-fill" id="ageFill"></div>
+        </div>
+        <span class="age-label" id="ageLabel">AGE</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="scroll-hint">▼ SCROLL DOWN ▼</div>
+</header>
+<div class="ground-strip"></div>
+
+<!-- PLAYER INFO SECTION -->
+<section id="about" class="reveal">
+  <span class="eyebrow pixel">// PLAYER INFO</span>
+  <h2 class="pixel">About This World</h2>
+  <div class="about-wrap">
+    <div class="about-text">
+      <p class="body-text">
+        First-year Computer Engineering student at VESIT, Mumbai (holding a <b style="color:#FFF">10 CGPA</b>), parallel-questing through IIT Madras's B.S. Data Science program.
+        <br><br>
+        Currently spawned in as an early team member at <b style="color:#FFF">Sovriigne</b>, building the tokenized real-world-asset platform's blockchain layer, and grinding an internship at <b style="color:#FFF">Bynocs</b> on <b style="color:#FFF">EyeTwin</b> — a digital twin of the human eye.
+        <br><br>
+        When not shipping code, I'm respawning dead laptops, running CTFs, and building Redstone circuits and ALUs.
+      </p>
+    </div>
+    <div class="mc-panel stat-card">
+      <div class="stat-row"><span>Class</span><b>FULL-STACK ADVENTURER</b></div>
+      <div class="stat-row"><span>Guild</span><b>SOVRIIGNE / BYNOCS</b></div>
+      <div class="stat-row"><span>Main Weapon</span><b>REACT + SOLIDITY</b></div>
+      <div class="stat-row"><span>Side Quest</span><b>PICOCTF & REDSTONE</b></div>
+      <div class="stat-row"><span>Server</span><b>RAID6 @ HOME</b></div>
+    </div>
+  </div>
+</section>
+
+<!-- INVENTORY SECTION -->
+<section id="skills" class="reveal">
+  <span class="eyebrow pixel">// INVENTORY</span>
+  <h2 class="pixel">Crafting Materials</h2>
+  <div class="mc-panel inventory">
+    <div class="inv-slot enchanted">
+      <span class="icon">⚛️</span><span class="name">React / Next.js</span><span class="tier diamond">DIAMOND</span>
+      <div class="tooltip"><div class="tooltip-title">React / Next.js</div><div class="tooltip-lore">"Frontend architecture for modern guilds"</div><div class="tooltip-enchant">Efficiency V<br>Unbreaking III</div></div>
+    </div>
+    <div class="inv-slot enchanted">
+      <span class="icon">🔗</span><span class="name">Solidity / Polygon</span><span class="tier diamond">DIAMOND</span>
+      <div class="tooltip"><div class="tooltip-title">Solidity Smart Contracts</div><div class="tooltip-lore">"Upgradeable proxy patterns and RWA bitfields"</div><div class="tooltip-enchant">Fortune III</div></div>
+    </div>
+    <div class="inv-slot">
+      <span class="icon">🗄️</span><span class="name">Supabase / tRPC</span><span class="tier gold">GOLD</span>
+      <div class="tooltip"><div class="tooltip-title">Supabase & tRPC</div><div class="tooltip-lore">"End-to-end typesafe database magic"</div><div class="tooltip-enchant">Efficiency IV</div></div>
+    </div>
+    <div class="inv-slot">
+      <span class="icon">🧬</span><span class="name">Blender / Python bpy</span><span class="tier gold">GOLD</span>
+      <div class="tooltip"><div class="tooltip-title">Blender & Python bpy</div><div class="tooltip-lore">"Parametric anatomical modeling"</div><div class="tooltip-enchant">Precision II</div></div>
+    </div>
+    <div class="inv-slot">
+      <span class="icon">🔴</span><span class="name">Redstone & ALUs</span><span class="tier redstone">REDSTONE</span>
+      <div class="tooltip"><div class="tooltip-title">Redstone Engineering</div><div class="tooltip-lore">"Built a working Arithmetic Logic Unit in Minecraft"</div><div class="tooltip-enchant">Power V</div></div>
+    </div>
+    <div class="inv-slot">
+      <span class="icon">🔬</span><span class="name">FEBio / FE Sim</span><span class="tier iron">IRON</span>
+      <div class="tooltip"><div class="tooltip-title">FEBio Corneal Sim</div><div class="tooltip-lore">"Finite-element optical biophysics"</div></div>
+    </div>
+    <div class="inv-slot">
+      <span class="icon">🛡️</span><span class="name">picoCTF / Crypto</span><span class="tier gold">GOLD</span>
+      <div class="tooltip"><div class="tooltip-title">picoCTF Security</div><div class="tooltip-lore">"RSA breaks & regex exploitation under time pressure"</div><div class="tooltip-enchant">Sharpness IV</div></div>
+    </div>
+    <div class="inv-slot enchanted">
+      <span class="icon">🐧</span><span class="name">Linux / Kali</span><span class="tier diamond">DIAMOND</span>
+      <div class="tooltip"><div class="tooltip-title">Linux Kernel & Kali</div><div class="tooltip-lore">"Rescuing dead drives and GRUB bootloaders"</div><div class="tooltip-enchant">Mending I</div></div>
+    </div>
+    <div class="inv-slot">
+      <span class="icon">🧮</span><span class="name">Java / DSA</span><span class="tier iron">IRON</span>
+      <div class="tooltip"><div class="tooltip-title">Java & Algorithms</div><div class="tooltip-lore">"Core problem solving & competitive programming"</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- PROJECTS SECTION -->
+<section id="projects" class="reveal">
+  <span class="eyebrow pixel">// BUILDS</span>
+  <h2 class="pixel">Crafting Table</h2>
+  <div class="craft-grid">
+    <div class="mc-panel craft-card enchanted">
+      <div><span class="achieve-tag">ACHIEVEMENT GET!</span><h3>🏛️ SOVRIIGNE</h3>
+      <p>🏗️ Tokenized real-world-asset platform. Working the blockchain layer — role/permission bitfield hierarchy, ERC-20/ERC-1400 tokens, upgradeable proxy patterns on Polygon.</p></div>
+      <div class="tag-row"><span class="tag">⚛️ React</span><span class="tag">🔗 tRPC</span><span class="tag">🗄️ Supabase</span><span class="tag">💎 Solidity</span></div>
+    </div>
+    <div class="mc-panel craft-card enchanted">
+      <div><span class="achieve-tag">ACHIEVEMENT GET!</span><h3>👁️ EYETWIN</h3>
+      <p>🧬 Digital twin of the human eye for Bynocs. Parametric anatomical model in Blender with Snell's-law ray tracing, pupillary reflex, accommodation, and FEBio finite-element corneal simulation.</p></div>
+      <div class="tag-row"><span class="tag">🎨 Blender/bpy</span><span class="tag">🔬 FEBio</span><span class="tag">📡 Physio Optics</span></div>
+    </div>
+    <div class="mc-panel craft-card">
+      <div><span class="achieve-tag">ACHIEVEMENT GET!</span><h3>🤖 TRACEBACK.AI</h3>
+      <p>🧠 Autonomous developer-onboarding agent built at Syrus 2026 hackathon — reads an entire codebase and gets new engineers up to speed autonomously.</p></div>
+      <div class="tag-row"><span class="tag">🤖 Mastra</span><span class="tag">📐 pgvector</span><span class="tag">⚛️ Next.js</span><span class="tag">✨ Gemini</span></div>
+    </div>
+    <div class="mc-panel craft-card">
+      <div><span class="achieve-tag">ACHIEVEMENT GET!</span><h3>🛡️ PICOCTF RUNS</h3>
+      <p>🔐 Competitive CTF work with a focus on cryptography — RSA breaks, regex exploitation, and puzzle-solving under intense timer pressure.</p></div>
+      <div class="tag-row"><span class="tag">🔑 Crypto</span><span class="tag">🔢 RSA</span><span class="tag">🚩 CTF</span></div>
+    </div>
+    <div class="mc-panel craft-card">
+      <div><span class="achieve-tag">ACHIEVEMENT GET!</span><h3>🔧 DELL INSPIRON REVIVAL</h3>
+      <p>💻 Multi-session hardware rescue: RAM/SSD upgrade, GRUB and i915 driver fixes, and diagnosing an intermittent boot fault down to DC-jack vs drive power draw.</p></div>
+      <div class="tag-row"><span class="tag">🐧 Linux Mint</span><span class="tag">🛠️ Hardware</span><span class="tag">🔍 Diagnostics</span></div>
+    </div>
+    <div class="mc-panel craft-card">
+      <div><span class="achieve-tag" style="background:#4A2E10; border-color:#FF8800;">IN PROGRESS...</span><h3>🧪 LOCAL AI CODING AGENT</h3>
+      <p>⚙️ Exploring Qwen2.5-Coder via Ollama + Continue.dev to build a self-hosted coding agent tuned specifically to the Sovriigne stack.</p></div>
+      <div class="tag-row"><span class="tag">🦙 Ollama</span><span class="tag">💻 Continue.dev</span><span class="tag">🧠 LLM</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- TIMELINE SECTION -->
+<section id="timeline" class="reveal">
+  <span class="eyebrow pixel">// QUEST LOG</span>
+  <h2 class="pixel">Advancements</h2>
+  <div class="achv-list">
+    <div class="achv"><div class="node"></div><div class="txt"><b>Joined Sovriigne as early team member</b><span>Blockchain / RWA tokenization platform</span></div></div>
+    <div class="achv"><div class="node"></div><div class="txt"><b>Started Bynocs internship</b><span>EyeTwin — digital twin of the human eye</span></div></div>
+    <div class="achv"><div class="node"></div><div class="txt"><b>Built Traceback.ai at Syrus 2026</b><span>Autonomous onboarding agent hackathon project</span></div></div>
+    <div class="achv"><div class="node"></div><div class="txt"><b>Deepened Solidity mastery</b><span>OpenZeppelin, upgradeable contracts, oracles</span></div></div>
+    <div class="achv"><div class="node"></div><div class="txt"><b>Rescued multiple dead drives</b><span>NTFS UAS fix, EVM SSD read-I/O recovery</span></div></div>
+    <div class="achv"><div class="node"></div><div class="txt"><b>Enrolled — IIT Madras B.S. Data Science</b><span>Parallel degree alongside VESIT (10 CGPA)</span></div></div>
+  </div>
+</section>
+
+<!-- CONTACT SECTION -->
+<section id="contact" class="reveal">
+  <span class="eyebrow pixel">// RESPAWN POINT</span>
+  <h2 class="pixel" style="text-align:center;">Get In Touch</h2>
+  <div class="sign">
+    <h3>[ OAK SIGNPOST ]</h3>
+    <div class="contact-links">
+      <a class="mc-btn" href="mailto:shewalepranav66@gmail.com">✉ EMAIL PRANAV</a>
+      <a class="mc-btn" href="https://github.com/prze8969" target="_blank" rel="noopener">⌨ GITHUB PORTAL</a>
+      <a class="mc-btn" href="https://www.linkedin.com/in/pranav-shewale-prze8969/" target="_blank" rel="noopener">🔗 LINKEDIN NETWORK</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  Crafted with 100% recycled cobblestone & redstone dust — © 2026 Pranav
+</footer>
+
+<script>
+  // ===== AGE BAR (birthday: 15 Sept 2007) =====
+  const birthday = new Date(2007, 8, 15); // Month 0-indexed: 8 = September
+  const now = new Date();
+  let age = now.getFullYear() - birthday.getFullYear();
+  const hadBday = (now.getMonth() > birthday.getMonth()) || (now.getMonth() === birthday.getMonth() && now.getDate() >= birthday.getDate());
+  if (!hadBday) age--;
+
+  const lastBday = new Date(now.getFullYear(), birthday.getMonth(), birthday.getDate());
+  if (now < lastBday) lastBday.setFullYear(now.getFullYear() - 1);
+  const nextBday = new Date(lastBday);
+  nextBday.setFullYear(nextBday.getFullYear() + 1);
+  const yearProgress = (now - lastBday) / (nextBday - lastBday);
+
+  document.getElementById('ageLevel').textContent = age;
+  const daysToBday = Math.ceil((nextBday - now) / (1000 * 60 * 60 * 24));
+  document.getElementById('ageLabel').textContent = daysToBday + 'D TO ' + (age + 1);
+
+  // Animate fill after load
+  setTimeout(() => {
+    document.getElementById('ageFill').style.width = (yearProgress * 100).toFixed(1) + '%';
+  }, 600);
+
+  // ===== Smooth scroll with navbar offset =====
+  function scrollToSection(id) {
+    const el = document.getElementById(id);
+    const navHeight = 100;
+    const top = el.getBoundingClientRect().top + window.scrollY - navHeight;
+    window.scrollTo({ top: top, behavior: 'smooth' });
+  }
+
+  // Hotbar click navigation
+  document.querySelectorAll('.hotbar-slot').forEach(slot => {
+    slot.addEventListener('click', () => {
+      const target = slot.getAttribute('data-target');
+      scrollToSection(target);
+    });
+  });
+
+  // ===== Keyboard navigation (1-5) =====
+  document.addEventListener('keydown', (e) => {
+    const keyMap = { '1': 'about', '2': 'skills', '3': 'projects', '4': 'timeline', '5': 'contact' };
+    if (keyMap[e.key]) scrollToSection(keyMap[e.key]);
+  });
+
+  // ===== Achievement popup system =====
+  const popup = document.getElementById('achvPopup');
+  const achvText = document.getElementById('achvText');
+  let achvTimeout;
+  function showAchv(text) {
+    achvText.textContent = text;
+    popup.classList.add('show');
+    clearTimeout(achvTimeout);
+    achvTimeout = setTimeout(() => popup.classList.remove('show'), 4000);
+  }
+  setTimeout(() => showAchv("Welcome to Pranav's World"), 1200);
+  setTimeout(() => showAchv("Tip: Press 1-5 to hotbar navigate"), 7000);
+
+  // ===== Block break particles on click =====
+  const blockColors = ['#7A4B29', '#8A8A8A', '#63A63E', '#5BD3E0', '#FFD542', '#4A7C2E', '#FF2200'];
+  document.addEventListener('click', e => {
+    if (e.target.closest('a, .hotbar-slot, .inv-slot, .mc-btn, .contact-links')) return;
+    for (let i = 0; i < 10; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      p.style.left = e.clientX + 'px';
+      p.style.top = e.clientY + 'px';
+      p.style.background = blockColors[Math.floor(Math.random() * blockColors.length)];
+      document.body.appendChild(p);
+      const angle = (Math.PI * 2 / 10) * i + Math.random() * 0.5;
+      const dist = 30 + Math.random() * 50;
+      p.animate([
+        { transform: 'translate(0,0) scale(1)', opacity: 1 },
+        { transform: `translate(${Math.cos(angle) * dist}px, ${Math.sin(angle) * dist + 60}px) scale(0)`, opacity: 0 }
+      ], { duration: 700, easing: 'cubic-bezier(.3,.7,.4,1)', fill: 'forwards' });
+      setTimeout(() => p.remove(), 750);
+    }
+  });
+
+  // ===== Scroll reveal =====
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) entry.target.classList.add('visible');
+    });
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+  // ===== Active hotbar tracking + section achievements =====
+  const sections = document.querySelectorAll('section');
+  const sectionAchv = {
+    about: 'Advancement: Read the Lore',
+    skills: 'Advancement: Inventory Opened',
+    projects: 'Advancement: Master Crafter',
+    timeline: 'Advancement: Quest Log Updated',
+    contact: 'Advancement: Found Spawn Point'
+  };
+  let lastShown = '';
+  function getCurrentSection() {
+    let current = '';
+    sections.forEach(s => {
+      if (window.scrollY >= s.offsetTop - 150) current = s.id;
+    });
+    return current;
+  }
+  window.addEventListener('scroll', () => {
+    const current = getCurrentSection();
+    document.querySelectorAll('.hotbar-slot').forEach(slot => {
+      slot.classList.toggle('active', slot.getAttribute('data-target') === current);
+    });
+    if (current && current !== lastShown && sectionAchv[current]) {
+      lastShown = current;
+      showAchv(sectionAchv[current]);
+    }
+  });
+
+  // ===== Heart damage/regen on click =====
+  let hp = 10;
+  const heartBar = document.getElementById('heartBar');
+  document.addEventListener('click', e => {
+    if (e.target.closest('a, .hotbar-slot, .inv-slot, .mc-btn, .contact-links')) return;
+    if (hp > 0) {
+      hp--;
+      const hearts = heartBar.querySelectorAll('.heart');
+      hearts[hp].classList.remove('full');
+      hearts[hp].classList.add('empty');
+      setTimeout(() => {
+        if (hp < 10) {
+          hearts[hp].classList.remove('empty');
+          hearts[hp].classList.add('full');
+          hp++;
+        }
+      }, 3000);
+    }
+  });
+</script>
+
+</body>
+</html>
