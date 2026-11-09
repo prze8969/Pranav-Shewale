@@ -7,9 +7,12 @@ import { geo, MARKS, C } from '@/lib/atlas/geometry';
 import { FractalRenderer, View } from '@/lib/atlas/renderer';
 
 type Level = 'home' | 'projects' | 'project' | 'skills' | 'skill' | 'hackathons' | 'about' | 'edu' | 'experience' | 'contact' | 'channel';
+// Where a project or role was opened from, so it can offer a way back.
+interface Back { label: string; level: Level; extra: Partial<State> }
 interface State {
   level: Level; proj: number; peek: number; skill: number; speek: number; hack: number; role: number; chan: number;
   moving: boolean; zoom: number; hover: { re: number; im: number } | null; copied: boolean; ready: boolean; rev: number;
+  back: Back | null;
 }
 interface Layout { mobile: boolean; k: number; ox: number; oy: number; SW: number; SH: number; W: number; H: number }
 interface Leader { ax: number; ay: number; points: string; stroke: string; w: number; delay: number }
@@ -113,7 +116,7 @@ const btnAmber: React.CSSProperties = { display: 'flex', alignItems: 'center', g
 const chip: React.CSSProperties = { padding: '5px 10px', borderRadius: 7, background: '#1A1F2B', fontSize: 12.5, color: '#E3E7EE' };
 
 export default class Atlas extends React.Component<{}, State> {
-  state: State = { level: 'home', proj: 0, peek: 0, skill: 0, speek: 0, hack: 0, role: 0, chan: 0, moving: false, zoom: 1, hover: null, copied: false, ready: false, rev: 0 };
+  state: State = { level: 'home', proj: 0, peek: 0, skill: 0, speek: 0, hack: 0, role: 0, chan: 0, moving: false, zoom: 1, hover: null, copied: false, ready: false, rev: 0, back: null };
 
   private rootRef = React.createRef<HTMLDivElement>();
   private canvasRef = React.createRef<HTMLCanvasElement>();
@@ -233,25 +236,28 @@ export default class Atlas extends React.Component<{}, State> {
     this.raf = requestAnimationFrame(step);
   }
 
+  // Every move clears the "back" origin unless the caller passes one.
   private to(level: Level, extra: Partial<State> = {}) {
-    const next = { ...this.state, level, ...extra };
-    this.setState({ level, ...extra } as State);
+    const ex: Partial<State> = { back: null, ...extra };
+    const next = { ...this.state, level, ...ex };
+    this.setState({ level, ...ex } as State);
     this.animateTo(this.viewFor(next));
   }
+  goBack = () => { const b = this.state.back; if (b) this.to(b.level, b.extra); };
   goHome = () => this.to('home');
   go = (key: string) => {
     if (key === 'experience') { if (geo().roles.length) this.to('experience', { role: 0 }); return; }
     this.to(key as Level);
   };
-  openProject = (i: number) => this.to('project', { proj: i, peek: i });
+  openProject = (i: number, back: Back | null = null) => this.to('project', { proj: i, peek: i, back });
   openSkill = (i: number) => this.to('skill', { skill: i, speek: i });
-  openRole = (k: number) => this.to('experience', { role: k });
+  openRole = (k: number, back: Back | null = null) => this.to('experience', { role: k, back });
   openChan = (j: number) => this.to('channel', { chan: j });
   openEdu = () => this.to('edu');
-  openTarget = (t: Target) => { if (!t) return; if ('p' in t) this.openProject(t.p); else this.openRole(t.r); };
+  openTarget = (t: Target, back: Back | null = null) => { if (!t) return; if ('p' in t) this.openProject(t.p, back); else this.openRole(t.r, back); };
   stepDetail = (d: number) => {
     const g = geo(), st = this.state;
-    if (st.level === 'project') this.openProject((st.proj + d + g.projects.length) % g.projects.length);
+    if (st.level === 'project') this.openProject((st.proj + d + g.projects.length) % g.projects.length, st.back);
     else this.openSkill((st.skill + d + g.skills.length) % g.skills.length);
   };
   stepChan = (d: number) => { const n = geo().chans.length; this.openChan((this.state.chan + d + n) % n); };
@@ -401,9 +407,10 @@ export default class Atlas extends React.Component<{}, State> {
       }
       if (lvl === 'hackathons') {
         const hk = g.hacks[st.hack], tg = target(hk.project);
-        ringLevel(g.south, g.hacks, P.subRing, st.hack, (i) => this.state.hack !== i && this.setState({ hack: i }), (i) => this.openTarget(target(g.hacks[i].project)), (i) => [g.hacks[i].event, g.hacks[i].result],
-          { meta: hk.result, name: hk.event, sub: hk.detail + (tg ? ' · ' + targetName(tg) : ''), cta: 'See the project', open: () => this.openTarget(tg) },
-          (i) => ({ title: g.hacks[i].event, sub: g.hacks[i].result + ' · ' + targetName(target(g.hacks[i].project)), go: () => this.openTarget(target(g.hacks[i].project)) }));
+        const fromHack = (i: number): Back => ({ label: 'Hackathons', level: 'hackathons', extra: { hack: i } });
+        ringLevel(g.south, g.hacks, P.subRing, st.hack, (i) => this.state.hack !== i && this.setState({ hack: i }), (i) => this.openTarget(target(g.hacks[i].project), fromHack(i)), (i) => [g.hacks[i].event, g.hacks[i].result],
+          { meta: hk.result, name: hk.event, sub: hk.detail + (tg ? ' · ' + targetName(tg) : ''), cta: 'See the project', open: () => this.openTarget(tg, fromHack(st.hack)) },
+          (i) => ({ title: g.hacks[i].event, sub: g.hacks[i].result + ' · ' + targetName(target(g.hacks[i].project)), go: () => this.openTarget(target(g.hacks[i].project), fromHack(i)) }));
       }
 
       if (lvl === 'about') {
@@ -457,7 +464,8 @@ export default class Atlas extends React.Component<{}, State> {
     const titleFs = m ? 26 : 32;
 
     const crumbs: { label: string; go?: () => void; current: boolean }[] = [{ label: 'Overview', go: this.goHome, current: false }];
-    if (lvl === 'projects' || lvl === 'project') crumbs.push({ label: 'Projects', go: () => this.go('projects'), current: lvl === 'projects' });
+    if (lvl === 'projects' || (lvl === 'project' && !st.back)) crumbs.push({ label: 'Projects', go: () => this.go('projects'), current: lvl === 'projects' });
+    if ((lvl === 'project' || lvl === 'experience') && st.back) crumbs.push({ label: st.back.label, go: this.goBack, current: false });
     if (lvl === 'project') crumbs.push({ label: g.projects[st.proj].title, current: true });
     if (lvl === 'skills' || lvl === 'skill') crumbs.push({ label: 'Skills', go: () => this.go('skills'), current: lvl === 'skills' });
     if (lvl === 'skill') crumbs.push({ label: g.skills[st.skill].name, current: true });
@@ -497,6 +505,13 @@ export default class Atlas extends React.Component<{}, State> {
     );
     const chips = (list: string[]) => list.length > 0 && (
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{list.map((t) => <span key={t} style={chip}>{t}</span>)}</div>
+    );
+    const backBtn = st.back && (
+      <button type="button" className={s.ghost} onClick={this.goBack}
+        style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 8, height: 40, padding: '0 16px 0 12px', borderRadius: 20, border: '1px solid rgba(242,163,58,0.55)', background: 'rgba(9,11,18,0.6)', color: '#FFE2B8', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>
+        <Arrow dir="left" />
+        <span>Back to {st.back.label}</span>
+      </button>
     );
     const prevNext = (label: string) => (
       <>
@@ -583,6 +598,7 @@ export default class Atlas extends React.Component<{}, State> {
                     {!m && <span style={{ fontSize: 13, lineHeight: 1.45, color: '#D5DAE3' }}>{isP ? pr.tag : sk.tools.length + ' tools, each linked to real work'}</span>}
                   </div>
                   <div className={`${s.fade} ${s.scroll}`} style={panelStyle(P.detail.sheetTop)}>
+                    {isP && backBtn}
                     {isP ? body({ title: pr.title, tag: pr.badge, body: pr.body }) : body({ title: sk.name, tag: 'Each tool links to the work that uses it', body: sk.body })}
                     {isP && bullets(pr.points)}
                     {!isP && (
@@ -591,7 +607,7 @@ export default class Atlas extends React.Component<{}, State> {
                         {sk.tools.map(([name, id], i) => {
                           const t = target(id);
                           return t ? (
-                            <button key={i} type="button" className={s.row} onClick={() => this.openTarget(t)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 46, padding: '0 14px', borderRadius: 12, border: '1px solid #2A3040', background: 'rgba(16,19,28,0.95)', color: '#F1F3F7', cursor: 'pointer', textAlign: 'left' }}>
+                            <button key={i} type="button" className={s.row} onClick={() => this.openTarget(t, { label: sk.name, level: 'skill', extra: { skill: st.skill, speek: st.skill } })} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 46, padding: '0 14px', borderRadius: 12, border: '1px solid #2A3040', background: 'rgba(16,19,28,0.95)', color: '#F1F3F7', cursor: 'pointer', textAlign: 'left' }}>
                               <span style={{ fontSize: 14.5, fontWeight: 600 }}>{name}</span>
                               <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#F2C88A', whiteSpace: 'nowrap' }}>Used in {targetName(t)}<LongArrow /></span>
                             </button>
@@ -692,6 +708,7 @@ export default class Atlas extends React.Component<{}, State> {
                     </div>
                   )}
                   <div className={`${s.fade} ${s.scroll}`} style={panelStyle(P.role.sheetTop)}>
+                    {backBtn}
                     {m && (
                       <div style={{ display: 'flex', gap: 8 }}>
                         {g.roles.map((x, k) => (
