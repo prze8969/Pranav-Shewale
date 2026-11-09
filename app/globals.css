@@ -3,110 +3,19 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --font-cinzel: 'Cinzel', 'Trajan Pro', Georgia, serif;
-    --font-inter: 'Inter', system-ui, -apple-system, sans-serif;
-  }
-
   * {
     box-sizing: border-box;
   }
 
-  html {
-    scroll-behavior: smooth;
-    background-color: #080b11;
-    color: #f1ede3;
-  }
-
+  html,
   body {
-    background-color: #080b11;
-    color: #e4ecf5;
-    font-family: var(--font-inter);
-    overflow-x: hidden;
-    min-height: 100vh;
-    selection-background-color: #dfb76c;
-    selection-color: #080b11;
+    background-color: #07080c;
+    color: #f1f3f7;
+    font-family: var(--font-inter), Inter, system-ui, -apple-system, sans-serif;
   }
 
   ::selection {
-    background: #dfb76c;
-    color: #080b11;
+    background: #f2a33a;
+    color: #07080c;
   }
-}
-
-/* ---------- CUSTOM SKYRIM SCROLLBAR ---------- */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #080b11;
-  border-left: 1px solid #1a2230;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #273449;
-  border: 1px solid #cba358;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #dfb76c;
-}
-
-/* ---------- SKYRIM PANEL STYLES ---------- */
-.skyrim-panel {
-  position: relative;
-  background: radial-gradient(circle at 50% 0%, #111724 0%, #090c13 100%);
-  border-image: linear-gradient(to bottom, #dfb76c, #3d4a5d, #dfb76c) 1;
-  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.8), inset 0 0 15px rgba(0, 0, 0, 0.7);
-}
-
-/* Corner Elder Scroll Accents */
-.skyrim-panel::before {
-  content: '';
-  position: absolute;
-  top: -2px;
-  left: -2px;
-  width: 8px;
-  height: 8px;
-  border-top: 2px solid #dfb76c;
-  border-left: 2px solid #dfb76c;
-  pointer-events: none;
-}
-
-.skyrim-panel::after {
-  content: '';
-  position: absolute;
-  bottom: -2px;
-  right: -2px;
-  width: 8px;
-  height: 8px;
-  border-bottom: 2px solid #dfb76c;
-  border-right: 2px solid #dfb76c;
-  pointer-events: none;
-}
-
-/* Text glow for Dovahkiin headings */
-.skyrim-glow {
-  text-shadow: 0 0 12px rgba(223, 183, 108, 0.45);
-}
-
-/* Shimmer animation for enchantments */
-@keyframes elderShimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
-.enchanted-text {
-  background: linear-gradient(90deg, #dfb76c 0%, #ffffff 50%, #dfb76c 100%);
-  background-size: 200% auto;
-  color: transparent;
-  -webkit-background-clip: text;
-  background-clip: text;
-  animation: elderShimmer 6s linear infinite;
 }

@@ -1,0 +1,50 @@
+.root {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #07080c;
+  color: #f1f3f7;
+  font-family: var(--font-inter), Inter, system-ui, sans-serif;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
+  -webkit-tap-highlight-color: transparent;
+}
+.canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.stage { position: absolute; transform-origin: 0 0; pointer-events: none; }
+.stage > * { pointer-events: auto; }
+.none { pointer-events: none !important; }
+
+.grotesk { font-family: var(--font-grotesk), 'Space Grotesk', Inter, sans-serif; }
+.mono { font-family: var(--font-mono), 'JetBrains Mono', ui-monospace, monospace; }
+
+/* Pop-ins use the separate scale/rotate properties so they never fight a centring transform. */
+@keyframes fadein { from { opacity: 0 } to { opacity: 1 } }
+@keyframes ringin { from { opacity: 0; scale: 0.92; rotate: -8deg } to { opacity: 1; scale: 1; rotate: 0deg } }
+@keyframes draw { from { stroke-dashoffset: 900 } to { stroke-dashoffset: 0 } }
+@keyframes discin { from { opacity: 0; scale: 0.88 } to { opacity: 1; scale: 1 } }
+.fade { animation: fadein 0.6s ease-out both; }
+.ring { animation: ringin 0.7s cubic-bezier(.2, .8, .2, 1) both; }
+.lead { stroke-dasharray: 900; animation: draw 1s ease-out both; }
+.disc { animation: discin 0.6s cubic-bezier(.2, .8, .2, 1) both; }
+
+.blur { backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 8px 28px rgba(0, 0, 0, 0.6); }
+.tag:hover, .tag:focus-visible { border-color: #f2a33a !important; outline: none; }
+.txt:hover, .txt:focus-visible { color: #ffc266 !important; outline: none; }
+.slice:focus-visible { outline: none; filter: brightness(1.4); }
+.ghost:hover { background: rgba(255, 255, 255, 0.08) !important; }
+.row:hover, .row:focus-visible { border-color: #f2a33a !important; background: rgba(242, 163, 58, 0.12) !important; outline: none; }
+.lnk:hover { background: #ffb95a !important; color: #07080c !important; }
+.grad {
+  background: linear-gradient(100deg, #ffffff 0%, #ffe7c2 45%, #f2a33a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.85));
+}
+.scroll { overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+.scroll::-webkit-scrollbar { width: 6px; }
+.scroll::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.18); border-radius: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fade, .ring, .lead, .disc { animation: none; }
+}
